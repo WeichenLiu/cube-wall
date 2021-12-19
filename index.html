@@ -83,6 +83,7 @@
       <input id="dimension" type="number" min="2" max="200" value="10"/>
       <button id="build">Build(生成)</button>
       <button id="help">Help(帮助)</button>
+      <label id="timer">Timer(计时器): <span id="time">0</span></label>
     </div>
   </header>
   <main id="main">
@@ -92,6 +93,78 @@
   </main>
 
   <script>
+    class Timer {
+      constructor () {
+        this.isRunning = false;
+        this.startTime = 0;
+        this.overallTime = 0;
+      }
+
+      _getTimeElapsedSinceLastStart () {
+        if (!this.startTime) {
+          return 0;
+        }
+
+        return Date.now() - this.startTime;
+      }
+
+      start () {
+        if (this.isRunning) {
+          return console.error('Timer is already running');
+        }
+
+        this.isRunning = true;
+
+        this.startTime = Date.now();
+      }
+
+      stop () {
+        if (!this.isRunning) {
+          return console.error('Timer is already stopped');
+        }
+
+        this.isRunning = false;
+
+        this.overallTime = this.overallTime + this._getTimeElapsedSinceLastStart();
+      }
+
+      reset () {
+        this.overallTime = 0;
+
+        if (this.isRunning) {
+          this.startTime = Date.now();
+          return;
+        }
+
+        this.startTime = 0;
+      }
+
+      getTime () {
+        if (!this.startTime) {
+          return 0;
+        }
+
+        if (this.isRunning) {
+          return this.overallTime + this._getTimeElapsedSinceLastStart();
+        }
+
+        return this.overallTime;
+      }
+    }
+
+    function checkCorrectness(wall, event) {
+      const blockX = parseInt(event.offsetX / wall.cellWidth);
+      const blockY = parseInt(event.offsetY / wall.cellWidth);
+      console.log("x: " + blockX + " y: " + blockY)
+      if(blockX == wall.point.x && blockY == wall.point.y && !wall.hinted){
+        wall.timer.stop();
+        const timeInSeconds = Math.round(wall.timer.getTime() / 1000);
+        const minutes = parseInt(timeInSeconds / 60);
+        const seconds = timeInSeconds % 60;
+        window.alert("Correct, time spent: " + minutes + ':' + seconds);
+      }
+    }
+
     class Wall {
       constructor() {
         this.main = document.getElementById('main')
@@ -112,6 +185,8 @@
         this.rightCanvas.height = this.canvasWidth
         this.rightCanvas.style.width = this.canvasWidth + 'px'
         this.rightCanvas.style.height = this.canvasWidth + 'px';
+
+
       }
     }
 
@@ -169,6 +244,7 @@
         this.timerId = null
       }
 
+      this.hinted = false
       this.dimension = parseInt(document.getElementById('dimension').value)
       this.cellWidth = this.canvasWidth / this.dimension
 
@@ -182,6 +258,8 @@
       let color = this.randomColor(m[x][y])
       m[x][y] = color
 
+      this.timer.reset()
+
       this.drawMatrix(this.rightCtx, m)
     }
 
@@ -189,6 +267,7 @@
       let {x, y} = this.point
       let color = this.matrix[x][y]
 
+      this.hinted = true;
       if (this.timerId) {
         clearInterval(this.timerId)
         this.timerId = null
@@ -209,11 +288,27 @@
     }
 
     let wall = new Wall()
+    wall.leftCanvas.addEventListener('mousedown', function(e) {
+      checkCorrectness(wall, e)
+    })
+    wall.rightCanvas.addEventListener('mousedown', function(e) {
+      checkCorrectness(wall, e)
+    })
+
+    wall.timer = new Timer()
     let build = document.getElementById('build')
     build.onclick = wall.build.bind(wall);
 
     let help = document.getElementById('help')
     help.onclick = wall.help.bind(wall);
+
+    wall.timer.start();
+    setInterval(() => {
+      const timeInSeconds = Math.round(wall.timer.getTime() / 1000);
+      const minutes = parseInt(timeInSeconds / 60);
+      const seconds = timeInSeconds % 60;
+      document.getElementById('time').innerText = minutes + ':' + seconds;
+    }, 100)
 
     wall.build()
   </script>
